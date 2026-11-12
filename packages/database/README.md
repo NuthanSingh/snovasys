@@ -1,0 +1,5 @@
+# Database workspace
+
+This workspace owns the PostgreSQL schema, migrations, generated Prisma Client, and reusable client factory. The `prisma.config.ts` file reads `DIRECT_URL` and `SHADOW_DATABASE_URL` from the repository-root `.env` for migrations. Runtime code should call `createPrismaClient()` from `@balancevault/database`; it uses `DATABASE_URL` and the Prisma PostgreSQL driver adapter.
+
+From the repository root, run `npm run db:generate`, `npm run db:migrate`, and `npm run db:seed`. The seed upserts only the three role reference rows; it does not create user accounts or an administrator. The `balancevault_app` role receives no ledger/audit update or delete privileges. `balancevault_migrator` owns schema changes and a dedicated shadow database, but has no cluster-wide `CREATEDB`; it is distinct from the runtime role, as described in [../../docs/architecture.md](../../docs/architecture.md).

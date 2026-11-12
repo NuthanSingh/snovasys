@@ -1,0 +1,28 @@
+{
+  "name": "@balancevault/api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node --test",
+    "admin:bootstrap": "node src/scripts/bootstrap-admin.js",
+    "admin:reset-password": "node src/scripts/reset-admin-password.js"
+  },
+  "dependencies": {
+    "@balancevault/database": "*",
+    "@balancevault/shared": "*",
+    "bcrypt": "^6.0.0",
+    "cors": "^2.8.5",
+    "cookie-parser": "^1.4.7",
+    "dotenv": "^17.2.2",
+    "express-rate-limit": "^8.1.0",
+    "express": "^5.1.0",
+    "helmet": "^8.1.0",
+    "jsonwebtoken": "^9.0.2",
+    "rate-limit-redis": "^4.2.1",
+    "redis": "^5.8.2",
+    "zod": "^4.1.12"
+  }
+}

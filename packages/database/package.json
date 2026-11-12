@@ -1,0 +1,23 @@
+{
+  "name": "@balancevault/database",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "db:generate": "prisma generate --schema prisma/schema.prisma",
+    "db:migrate": "prisma migrate dev --schema prisma/schema.prisma",
+    "db:seed": "node prisma/seed.js"
+  },
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "dependencies": {
+    "@prisma/client": "^7.10.1",
+    "@prisma/adapter-pg": "^7.10.1",
+    "pg": "^8.16.3",
+    "dotenv": "^17.2.2"
+  },
+  "devDependencies": {
+    "prisma": "^7.10.1"
+  }
+}

@@ -1,0 +1,193 @@
+generator client {
+  provider = "prisma-client-js"
+  output   = "../generated/client"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum RoleName {
+  ADMIN
+  USER
+  BOOTSTRAP_ADMIN
+}
+
+enum UserStatus {
+  PENDING
+  ACTIVE
+  SUSPENDED
+  CLOSED
+}
+
+enum AccountType {
+  CHECKING
+  SAVINGS
+}
+
+enum AccountStatus {
+  PENDING
+  ACTIVE
+  FROZEN
+  CLOSED
+}
+
+enum OnboardingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  NEEDS_INFO
+}
+
+enum LedgerEntryType {
+  DEBIT
+  CREDIT
+}
+
+enum LedgerTransactionType {
+  DEPOSIT
+  TRANSFER
+}
+
+enum LedgerTransactionStatus {
+  COMPLETED
+}
+
+enum OperationResult {
+  SUCCESS
+  FAILURE
+}
+
+model Role {
+  id          String   @id @default(uuid()) @db.Uuid
+  name        RoleName @unique
+  description String   @db.VarChar(240)
+  createdAt   DateTime @default(now()) @db.Timestamptz(6)
+  users       User[]
+
+  @@map("roles")
+}
+
+model User {
+  id                 String              @id @default(uuid()) @db.Uuid
+  fullName           String              @db.VarChar(120)
+  email              String              @unique @db.VarChar(320)
+  passwordHash       String              @db.VarChar(255)
+  status             UserStatus          @default(PENDING)
+  roleId             String              @db.Uuid
+  role               Role                @relation(fields: [roleId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  accounts           Account[]
+  onboardingRequests OnboardingRequest[] @relation("OnboardingOwner")
+  reviewedOnboarding OnboardingRequest[] @relation("OnboardingReviewer")
+  auditLogs          AuditLog[]          @relation("AuditActor")
+  ledgerTransactions LedgerTransaction[] @relation("TransactionActor")
+  createdAt          DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt          DateTime            @updatedAt @db.Timestamptz(6)
+
+  @@index([roleId, status])
+  @@index([createdAt])
+  @@map("users")
+}
+
+model Account {
+  id                      String              @id @default(uuid()) @db.Uuid
+  userId                  String              @db.Uuid
+  holder                  User                @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  type                    AccountType
+  status                  AccountStatus       @default(PENDING)
+  currency                String              @default("USD") @db.Char(3)
+  ledgerEntries           LedgerEntry[]
+  sourceTransactions      LedgerTransaction[] @relation("TransactionSource")
+  destinationTransactions LedgerTransaction[] @relation("TransactionDestination")
+  createdAt               DateTime            @default(now()) @db.Timestamptz(6)
+  updatedAt               DateTime            @updatedAt @db.Timestamptz(6)
+
+  @@index([userId, status])
+  @@map("accounts")
+}
+
+model OnboardingRequest {
+  id                  String           @id @default(uuid()) @db.Uuid
+  userId              String           @db.Uuid
+  user                User             @relation("OnboardingOwner", fields: [userId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  status              OnboardingStatus @default(PENDING)
+  phoneNumber         String           @db.VarChar(16)
+  addressLine         String           @db.VarChar(200)
+  city                String           @db.VarChar(80)
+  postalCode          String           @db.VarChar(20)
+  countryCode         String           @db.Char(2)
+  activeSubmissionKey String?          @unique @db.Uuid
+  submittedAt         DateTime         @default(now()) @db.Timestamptz(6)
+  reviewedAt          DateTime?        @db.Timestamptz(6)
+  reviewedById        String?          @db.Uuid
+  reviewedBy          User?            @relation("OnboardingReviewer", fields: [reviewedById], references: [id], onDelete: SetNull, onUpdate: Cascade)
+  reviewComment       String?          @db.VarChar(500)
+  createdAt           DateTime         @default(now()) @db.Timestamptz(6)
+  updatedAt           DateTime         @updatedAt @db.Timestamptz(6)
+
+  @@index([userId, submittedAt])
+  @@index([status, submittedAt])
+  @@index([reviewedById])
+  @@map("onboarding_requests")
+}
+
+model AuditLog {
+  id         String          @id @default(uuid()) @db.Uuid
+  actorId    String?         @db.Uuid
+  actor      User?           @relation("AuditActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  action     String          @db.VarChar(120)
+  targetType String          @db.VarChar(80)
+  targetId   String?         @db.VarChar(120)
+  result     OperationResult
+  metadata   Json?
+  createdAt  DateTime        @default(now()) @db.Timestamptz(6)
+
+  @@index([actorId, createdAt])
+  @@index([targetType, targetId, createdAt])
+  @@index([action, createdAt])
+  @@map("audit_logs")
+}
+
+model LedgerEntry {
+  id            String            @id @default(uuid()) @db.Uuid
+  accountId     String            @db.Uuid
+  account       Account           @relation(fields: [accountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  transactionId String            @db.Uuid
+  transaction   LedgerTransaction @relation(fields: [transactionId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  type          LedgerEntryType
+  amount        Decimal           @db.Decimal(19, 4)
+  referenceId   String            @db.Uuid
+  createdAt     DateTime          @default(now()) @db.Timestamptz(6)
+
+  @@unique([referenceId, accountId, type])
+  @@unique([transactionId, accountId, type])
+  @@index([accountId, createdAt])
+  @@index([referenceId])
+  @@map("ledger_entries")
+}
+
+model LedgerTransaction {
+  id                   String                  @id @default(uuid()) @db.Uuid
+  referenceId          String                  @unique @default(uuid()) @db.Uuid
+  idempotencyKey       String?                 @unique @db.VarChar(128)
+  requestHash          String?                 @db.Char(64)
+  type                 LedgerTransactionType
+  status               LedgerTransactionStatus @default(COMPLETED)
+  amount               Decimal                 @db.Decimal(19, 4)
+  currency             String                  @default("USD") @db.Char(3)
+  description          String                  @db.VarChar(240)
+  actorId              String?                 @db.Uuid
+  actor                User?                   @relation("TransactionActor", fields: [actorId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  sourceAccountId      String?                 @db.Uuid
+  sourceAccount        Account?                @relation("TransactionSource", fields: [sourceAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  destinationAccountId String?                 @db.Uuid
+  destinationAccount   Account?                @relation("TransactionDestination", fields: [destinationAccountId], references: [id], onDelete: Restrict, onUpdate: Cascade)
+  ledgerEntries        LedgerEntry[]
+  createdAt            DateTime                @default(now()) @db.Timestamptz(6)
+
+  @@index([actorId, createdAt])
+  @@index([type, status, createdAt])
+  @@index([sourceAccountId, createdAt])
+  @@index([destinationAccountId, createdAt])
+  @@map("ledger_transactions")
+}

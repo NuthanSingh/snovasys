@@ -1,0 +1,26 @@
+{
+  "name": "balancevault",
+  "private": true,
+  "type": "module",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently -k -n API,Web \"npm run dev:api\" \"npm run dev:web\"",
+    "dev:api": "npm run dev --workspace=@balancevault/api",
+    "dev:web": "npm run dev --workspace=@balancevault/web",
+    "build": "npm run build --workspace=@balancevault/web",
+    "test:api": "npm run test --workspace=@balancevault/api",
+    "admin:bootstrap": "npm run admin:bootstrap --workspace=@balancevault/api",
+    "db:generate": "npm run db:generate --workspace=@balancevault/database",
+    "db:migrate": "npm run db:migrate --workspace=@balancevault/database",
+    "db:seed": "npm run db:seed --workspace=@balancevault/database"
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1"
+  },
+  "allowScripts": {
+    "bcrypt@6.0.0": true
+  }
+}
