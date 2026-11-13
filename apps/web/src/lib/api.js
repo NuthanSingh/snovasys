@@ -1,4 +1,5 @@
-const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:4000';
+// In a production build the API is served from the same origin, so relative URLs are used.
+const apiBaseUrl = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.PROD ? '' : 'http://localhost:4000');
 
 export class ApiError extends Error {
   constructor(message, status, code, details) {

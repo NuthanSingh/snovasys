@@ -1,3 +1,5 @@
+import { existsSync } from 'node:fs';
+import { fileURLToPath } from 'node:url';
 import cors from 'cors';
 import cookieParser from 'cookie-parser';
 import express from 'express';
@@ -19,6 +21,7 @@ export function createApp({
 	configuration = env,
 	authRateLimiter,
 	passwordHasher,
+	serveWeb = process.env.SERVE_WEB === 'true',
 } = {}) {
 	const app = express();
 	const rateLimiter = authRateLimiter ?? createAuthRateLimiter(redisClient, {
@@ -44,6 +47,16 @@ export function createApp({
 	app.use('/api/users', createUsersRouter({ prisma, redisClient, configuration }));
 	app.use('/api/accounts', createAccountsRouter({ prisma, redisClient, configuration }));
 	app.use('/api/admin', createAdminRouter({ prisma, redisClient, configuration }));
+
+	// Single-service deployment: serve the built React app from the same origin as the API,
+	// so the HttpOnly session cookie stays first-party. Enabled only with SERVE_WEB=true.
+	const webDist = fileURLToPath(new URL('../../web/dist/', import.meta.url));
+	if (serveWeb && existsSync(webDist)) {
+		app.use(express.static(webDist, { index: false }));
+		app.get(/^(?!\/api(?:\/|$)).*/, (_request, response) => {
+			response.sendFile('index.html', { root: webDist });
+		});
+	}
 	app.use(notFoundHandler);
 	app.use(errorHandler);
 
